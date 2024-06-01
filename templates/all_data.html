@@ -1,0 +1,188 @@
+{% extends 'base.html' %}
+{% load my_filters %}
+
+{% block title %}Вся інформація{% endblock %}
+
+{% block content %}
+<div class="scrollable-table-container">
+    <h2>Таблиця Гравців</h2>
+    <table class="scrollable-table">
+        <thead>
+            <tr>
+                <th>Ім'я</th>
+                <th>Прізвище</th>
+                <th>Вік</th>
+                <th>Країна</th>
+                <th>Досвід</th>
+                <th>Ранг</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for player in players %}
+            <tr>
+                <td>{{ player.name }}</td>
+                <td>{{ player.surname }}</td>
+                <td>{{ player.age }}</td>
+                <td>{{ player.country.country }}</td>
+                <td>{{ player.experience }}</td>
+                <td>{{ player.rank }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2>Таблиця Країн</h2>
+    <table class="scrollable-table">
+        <thead>
+            <tr>
+                <th>Країна</th>
+                <th>Широта</th>
+                <th>Довгота</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for country in countries %}
+            <tr>
+                <td>{{ country.country }}</td>
+                <td>{{ country.latitude }}</td>
+                <td>{{ country.longitude }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2>Сумісність країн</h2>
+    <table class="scrollable-table">
+        <thead>
+            <tr>
+                <th>Країна</th>
+                {% for country in countries %}
+                <th>{{ country.country }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for compatibility in compatibility_list_country %}
+            <tr>
+                {% for value in compatibility %}
+                <td>{{ value }}</td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2>Сумісність між гравцями за країнами</h2>
+    <table class="scrollable-table">
+        <thead>
+            <tr>
+                <th>Гравець</th>
+                {% for player in players %}
+                    <th>{{ player.name }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for player in players %}
+                <tr>
+                    <td>{{ player.name }}</td>
+                    {% for other_player in players %}
+                        <td>
+                            {% if player != other_player %}
+                                {% get_compatibility_country player.id other_player.id %}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2>Сумісність гравців за віком</h2>
+    <table class="scrollable-table">
+        <thead>
+            <tr>
+                <th>Гравець</th>
+                {% for player in players %}
+                    <th>{{ player.name }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for player in players %}
+                <tr>
+                    <td>{{ player.name }}</td>
+                    {% for other_player in players %}
+                        <td>
+                            {% if player != other_player %}
+                                {% get_compatibility_age player.id other_player.id %}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2>Сумісність гравців за досвідом</h2>
+    <table class="scrollable-table">
+        <thead>
+            <tr>
+                <th>Гравець</th>
+                {% for player in players %}
+                    <th>{{ player.name }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for player in players %}
+                <tr>
+                    <td>{{ player.name }}</td>
+                    {% for other_player in players %}
+                        <td>
+                            {% if player != other_player %}
+                                {% get_compatibility_experience player.id other_player.id %}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2>Сумісність гравців за рангом</h2>
+    <table class="scrollable-table">
+        <thead>
+            <tr>
+                <th>Гравець</th>
+                {% for player in players %}
+                    <th>{{ player.name }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for player in players %}
+                <tr>
+                    <td>{{ player.name }}</td>
+                    {% for other_player in players %}
+                        <td>
+                            {% if player != other_player %}
+                                {% get_compatibility_rank player.id other_player.id %}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}

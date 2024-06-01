@@ -1,0 +1,206 @@
+{% extends 'base.html' %}
+
+{% block title %}Формування команди{% endblock %}
+
+{% block content %}
+
+<script type="text/javascript">
+  var playersData = JSON.parse('{{ players_json | escapejs }}');
+
+  document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('teamForm');
+    const checkboxes = form.querySelectorAll('input[type=checkbox]');
+    const priorityInputs = form.querySelectorAll('input[type=number]');
+
+    priorityInputs.forEach(input => input.disabled = true);
+    checkboxes.forEach((checkbox, index) => {
+        checkbox.addEventListener('change', function() {
+            priorityInputs[index].disabled = !this.checked;
+            if (this.checked) {
+                priorityInputs[index].focus();
+            }
+        });
+    });
+
+    document.querySelectorAll('.criteria-label input[type=checkbox]').forEach((checkbox) => {
+        checkbox.addEventListener('change', function() {
+            const priorityInput = this.parentNode.nextElementSibling.querySelector('input[type=number]');
+            priorityInput.disabled = !this.checked;
+        });
+    });
+
+    form.addEventListener('submit', function(event) {
+        let isAnyCheckboxChecked = Array.from(checkboxes).some(c => c.checked);
+        if (!isAnyCheckboxChecked) {
+          alert('Виберіть хоча б один критерій.');
+          event.preventDefault();
+          return;
+        }
+
+        priorityInputs.forEach(input => input.disabled = false);
+        const totalPriority = Array.from(priorityInputs)
+            .reduce((total, input) => total + parseFloat(input.value || 0), 0);
+
+        if (totalPriority !== 1) {
+          alert('Загальна сума пріоритетів повинна дорівнювати 1.');
+          event.preventDefault();
+          priorityInputs.forEach(input => {
+            const isChecked = input.previousElementSibling.checked;
+            input.disabled = !isChecked;
+          });
+          checkboxes.forEach(checkbox => {
+            checkbox.checked = false;
+          });
+          priorityInputs.forEach(input => {
+              input.disabled = true;
+              input.value = '';  // Очищення значення поля
+          });
+        }
+    });
+
+  });
+
+  function getSelectedPlayerIds() {
+    return Array.from(document.querySelectorAll('.player-select'))
+        .map(select => select.value)
+        .filter(value => value !== ''); 
+}
+  
+function addPlayerSelection() {
+  const container = document.getElementById('playerSelections');
+  const numPlayers = container.querySelectorAll('.player-selection-container').length;
+
+  if (numPlayers < 11) {
+      const selectionContainer = document.createElement('div');
+      selectionContainer.className = 'player-selection-container';
+      container.appendChild(selectionContainer);
+
+      const select = document.createElement('select');
+      select.name = 'player' + (numPlayers + 1); // Додаємо 1, оскільки numPlayers - це індексація з 0
+      select.className = 'player-select';
+      select.required = true;
+      selectionContainer.appendChild(select);
+
+      // Оновлення опцій для нового вибору гравця
+      updatePlayerSelectOptions(select, getSelectedPlayerIds());
+
+      const removeButton = document.createElement('button');
+      removeButton.textContent = '-';
+      removeButton.type = 'button';
+      removeButton.className = 'remove-player-button';
+      removeButton.onclick = function() { removePlayerSelection(this); };
+      selectionContainer.appendChild(removeButton);
+
+      select.onchange = function () {
+          // Оновлення всіх виборів гравців після вибору нового гравця
+          container.querySelectorAll('.player-select').forEach(otherSelect => {
+              if (otherSelect !== select) { // Переконуємося, що ми не оновлюємо вибір, що щойно був змінений
+                  updatePlayerSelectOptions(otherSelect, getSelectedPlayerIds());
+              }
+          });
+          checkCanAddAnother();
+      };
+      checkCanAddAnother();
+  }
+}
+  
+function updatePlayerSelectOptions(selectElement, excludedIds) {
+  // Запам'ятовуємо поточно обраного гравця
+  const currentSelectedValue = selectElement.value;
+  
+  // Створюємо новий список опцій для вибору
+  const newOptions = playersData
+    .filter(player => !excludedIds.includes(player.pk.toString()) || player.pk.toString() === currentSelectedValue)
+    .map(player => {
+      const isSelected = player.pk.toString() === currentSelectedValue;
+      return `<option value="${player.pk}"${isSelected ? ' selected' : ''}>${player.fields.name} ${player.fields.surname}</option>`;
+    });
+
+  // Застосовуємо новий список опцій до вибору, зберігаючи поточний вибір
+  selectElement.innerHTML = '<option value="">Виберіть гравця...</option>' + newOptions.join('');
+}
+
+  function checkCanAddAnother() {
+    const container = document.getElementById('playerSelections');
+    const allSelectionContainers = container.querySelectorAll('.player-selection-container');
+    const allSelected = Array.from(allSelectionContainers).every(container => {
+      const select = container.querySelector('.player-select');
+      return select && select.value !== '';
+    });
+    const addButton = document.getElementById('addPlayerButton');
+    addButton.disabled = !allSelected || allSelectionContainers.length >= 11;
+  }
+
+  function removePlayerSelection(button) {
+    const selectionContainer = button.closest('.player-selection-container');
+    selectionContainer.remove();
+    checkCanAddAnother();
+    // Оновлення всіх виборів гравців після видалення гравця
+    document.querySelectorAll('.player-select').forEach(select => {
+        updatePlayerSelectOptions(select, getSelectedPlayerIds());
+    });
+}
+  
+</script>
+
+<h2>Формування команди</h2>
+<p>Тут ви можете вибрати гравців для вашої команди.</p>
+
+<form method="post" id="teamForm" novalidate>
+    {% csrf_token %}
+    <div class="form-row">
+        <label>Вибір критеріїв:</label>
+        <input type="checkbox" id="countryCheckbox" name="country_checkbox">
+        <label for="countryCheckbox">Країна</label>
+        <input type="checkbox" id="ageCheckbox" name="age_checkbox">
+        <label for="ageCheckbox">Вік</label>
+        <input type="checkbox" id="experienceCheckbox" name="experience_checkbox">
+        <label for="experienceCheckbox">Досвід</label>
+        <input type="checkbox" id="rankCheckbox" name="rank_checkbox">
+        <label for="rankCheckbox">Ранг</label>
+    </div>
+    <div class="form-row">
+        <label>Вибір пріоритетів:</label>
+        <input type="number" id="countryPriority" name="country_priority" min="0" max="1" step="0.01" disabled>
+        <input type="number" id="agePriority" name="age_priority" min="0" max="1" step="0.01"disabled>
+        <input type="number" id="experiencePriority" name="experience_priority" min="0" max="1" step="0.01"disabled>
+        <input type="number" id="rankPriority" name="rank_priority" min="0" max="1" step="0.01"disabled>
+    </div>
+    <label style="margin-bottom: 500px">Вибір гравців:</label><br>
+    <div id="playerSelections">
+      <!-- Тут будуть динамічно додаватися вибори гравців -->
+    </div>
+    <button type="button" id="addPlayerButton" onclick="addPlayerSelection()">+</button>
+    <button type="submit" class="submit-button">Сформувати команду</button>
+</form>
+
+{% if best_team_players %}
+  <h2>Сумісна команда</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Ім'я</th>
+        <th>Прізвище</th>
+        <th>Вік</th>
+        <th>Країна</th>
+        <th>Досвід</th>
+        <th>Ранг</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for player in best_team_players %}
+        <tr>
+          <td>{{ player.name }}</td>
+          <td>{{ player.surname }}</td>
+          <td>{{ player.age }}</td>
+          <td>{{ player.country }}</td>
+          <td>{{ player.experience }}</td>
+          <td>{{ player.rank }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endif %}
+
+
+{% endblock %}
